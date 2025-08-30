@@ -1,0 +1,119 @@
+{% load static %}
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/register.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="{% static 'images/logo_web-removebg-preview.png' %}" rel="icon" type="image/x-icon" sizes="512x512">
+    <title>Register / Login</title>
+</head>
+<body>
+    <video autoplay muted loop id="background-video">
+        <source src="{% static 'images/Glow Gene.mp4' %}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    <div class="logo-wrapper">
+       <div class="logo">
+         <img src="{% static 'images/TabLogo.png' %}" alt="Logo">
+       </div>
+    </div>
+
+    <div class="container {% if active_panel %}{{ active_panel }}{% endif %}" id="container">
+        <div class="form-container sign-up-container">
+            <form action="{% url 'auth_page' %}" method="post">
+                {% csrf_token %}
+                <h1>Create Account</h1>
+                <div class="social-container">
+                    <a href="{% provider_login_url 'facebook' %}" class="social"><i class="fab fa-facebook-f"></i></a>
+                    <a href="{% provider_login_url 'google' %}" class="social"><i class="fab fa-google-plus-g"></i></a>
+                    <a href="{% provider_login_url 'github' %}" class="social"><i class="fab fa-github"></i></a>
+
+                </div>
+                <span>or use your email for registration</span>
+
+                {% if messages %}
+                    <ul class="messages">
+                        {% for message in messages %}
+                            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+
+                {% for field in registration_form %}
+    <input type="{{ field.field.widget.input_type|default:'text' }}"
+               {% if not field.value %}placeholder="{{ field.label }}"{% endif %} {# Only show placeholder if no value #}
+               name="{{ field.name }}"
+               id="{{ field.id_for_label }}"
+               value="{{ field.value|default:'' }}"
+               {% if field.field.required %}required{% endif %} />
+    {% if field.errors %}
+        <div class="errorlist">
+            {% for error in field.errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endfor %}
+
+                <button type="submit" name="signup_submit">Sign Up</button>
+            </form>
+        </div>
+
+        <div class="form-container sign-in-container">
+            <form action="{% url 'auth_page' %}" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.GET.next }}">
+                <h1>Sign in</h1>
+                <div class="social-container">
+                    <a href="{% provider_login_url 'facebook' %}" class="social"><i class="fab fa-facebook-f"></i></a>
+                    <a href="{% provider_login_url 'google' %}" class="social"><i class="fab fa-google-plus-g"></i></a>
+                    <a href="{% provider_login_url 'github' %}" class="social"><i class="fab fa-github"></i></a>
+                </div>
+                <span>or use your account</span>
+
+                {% for field in login_form %}
+                 
+    <input type="{{ field.field.widget.input_type|default:'text' }}"
+               {% if not field.value %}placeholder="{{ field.label }}"{% endif %} {# Only show placeholder if no value #}
+               name="{{ field.name }}"
+               id="{{ field.id_for_label }}"
+               value="{{ field.value|default:'' }}"
+               {% if field.field.required %}required{% endif %} />
+    {% if field.errors %}
+        <div class="errorlist">
+            {% for error in field.errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endfor %}
+
+                <a href="#">Forgot your password?</a>
+                <button type="submit" name="signin_submit">Sign In</button>
+            </form>
+        </div>
+
+        <div class="overlay-container">
+            <div class="overlay">
+                <div class="overlay-panel overlay-left">
+                    <h1>Welcome Back!</h1>
+                    <p>To keep connected with us please login with your personal info</p>
+                    <button class="ghost" id="signIn">Sign In</button>
+                </div>
+                <div class="overlay-panel overlay-right">
+                    <h1>Hello, Friend!</h1>
+                    <p>Enter your personal details and start journey with us</p>
+                    <button class="ghost" id="signUp">Sign Up</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer></footer>
+
+    <script src="{% static 'js/register.js' %}"></script>
+</body>
+</html>

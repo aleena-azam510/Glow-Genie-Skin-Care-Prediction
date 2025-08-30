@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="12" fill="#4CAF50"></rect>
+  <path d="M32 12C24.268 12 18 18.268 18 26C18 33.732 24.268 40 32 40C39.732 40 46 33.732 46 26C46 18.268 39.732 12 32 12ZM32 36C26.477 36 22 31.523 22 26C22 20.477 26.477 16 32 16C37.523 16 42 20.477 42 26C42 31.523 37.523 36 32 36Z" fill="white"></path>
+  <text x="32" y="53" text-anchor="middle" fill="white" font-size="14" font-family="Poppins, sans-serif" font-weight="600">AI</text>
+</svg>

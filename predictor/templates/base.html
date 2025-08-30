@@ -1,0 +1,201 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{% block title %}Glow Genesis Organic Care{% endblock %}</title>
+
+   {% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+     <title>Glow Genesis Organic Care</title>
+
+     <meta charset="UTF-8">
+     <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+     <meta name="description" content="">
+     <meta name="keywords" content="">
+     <meta name="author" content="">
+     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+     
+     <link rel="stylesheet" href="{% static 'css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'css/font-awesome.min.css'%}">
+    <link rel="stylesheet" href="{% static 'css/animate.css' %}">
+    <link rel="stylesheet" href="{% static 'css/owl.carousel.css' %}">
+    <link rel="stylesheet" href="{% static 'css/owl.theme.default.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/magnific-popup.css' %}">
+    <link href="{% static 'images/TabLogo.png' %}" rel="icon" type="image/x-icon" sizes="256x256">
+    <link rel="stylesheet" href="{% static 'css/templatemo-style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'css/chatbot.css' %}">
+    <link rel="stylesheet" href="{% static 'css/articles.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+ 
+
+    {% block extra_head %}{% endblock %} 
+{# Keep this for any page-specific head content #}
+</head>
+<body>
+
+    <section class="preloader">
+        <div class="spinner">
+            <span class="spinner-rotate"></span>
+        </div>
+    </section>
+
+    <section class="navbar custom-navbar navbar-fixed-top" role="navigation">
+        <div class="container">
+            <div class="navbar-header">
+                <a href="{% url 'index_page' %}" class="navbar-brand" style="display: flex; align-items: center; gap: 8px;">
+                    <img src="{% static 'images/logo_web-removebg-preview.png' %}" alt="Logo" style="height: 80px;">
+                </a>
+                <button class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+            </div>
+
+            <div class="navbar-collapse collapse">
+                <ul class="nav navbar-nav navbar-nav-first">
+                    <li><a href="{% url 'index_page' %}">Home</a></li>
+                    <li><a href="{% url 'index_page' %}#about">About</a></li>
+                    <li><a href="{% url 'developer_team_page' %}">Developer Team</a></li>
+                    <li><a href="{% url 'article_page' %}">Article</a></li>
+                    <li><a href="{% url 'skin_identifier' %}">Skin Type Identifier</a></li>
+                    <li><a href="{% url 'index_page' %}#contact">Contact</a></li>
+                    <li><a href="{% url 'index_page' %}#faqs">FAQs</a></li>
+                </ul>
+                <ul class="nav navbar-nav navbar-right">
+                    {% if user.is_authenticated %}
+                        <li><a href="{% url 'model_page' %}" class="section-btn">Skin-Diagnose</a></li>
+                        <li class="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                                Hello, {{ user.username }} <span class="caret"></span>
+                             </a>
+                            <ul class="dropdown-menu">
+                                <li><a href="{% url 'logout' %}">Logout</a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li><a href="{% url 'auth_page' %}" class="section-btn">Login / Sign Up</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section id="home" class="slider" data-stellar-background-ratio="0.5">
+        <div class="row">
+            <div class="owl-carousel owl-theme">
+                <div class="item item-first">
+                    <div class="caption">
+                        <div class="container">
+                            <div class="col-md-8 col-sm-12">
+                                <h3>Skin Diseases Recognition &amp; Diagnosis System</h3>
+                                <h1>Our mission is to deliver an AI-powered skin diagnosis experience you’ll never forget.</h1>
+                                <a href="{% url 'model_page' %}" class="section-btn btn btn-default smoothScroll">Click Here for AI-Powered Skin Diagnosis</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="item item-second">
+                    <div class="caption">
+                        <div class="container">
+                            <div class="col-md-8 col-sm-12">
+                                <h3>Smart Skin Analysis</h3>
+                                <h1>Experience AI-Powered Skin Diagnosis Instantly!</h1>
+                                <a href="{% url 'model_page' %}" class="section-btn btn btn-default smoothScroll">Click Here for AI-Powered Skin Diagnosis</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="item item-third">
+                    <div class="caption">
+                        <div class="container">
+                            <div class="col-md-8 col-sm-12">
+                                <h3>Smart Skin Analysis, Natural Healing</h3>
+                                <h1>AI-Powered Diagnosis with Home Remedy Suggestions</h1>
+                                <a href="{% url 'model_page' %}" class="section-btn btn btn-default smoothScroll">Click Here for AI-Powered Skin Diagnosis</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% block content %}{% endblock %}
+
+     <script src="{% static 'js/jquery.js' %}"></script>
+
+    <script src="{% static 'js/bootstrap.min.js' %}"></script>
+
+    <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-bc8Gc1Lppn/H07GgNq9B2S7t+02zWn+vK9g32XlK5uWz2q67sK7Gz10d1uV" crossorigin="anonymous"></script>
+
+    <script src="{% static 'js/wow.min.js' %}"></script>
+    <script>
+        // Initialize WOW.js after it's loaded
+        new WOW().init();
+    </script>
+
+    <script src="{% static 'js/jquery.stellar.min.js' %}"></script>
+    <script src="{% static 'js/owl.carousel.min.js' %}"></script>
+    <script src="{% static 'js/jquery.magnific-popup.min.js' %}"></script>
+    <script src="{% static 'js/smoothscroll.js' %}"></script>
+
+    <script src="{% static 'js/custom.js' %}"></script>
+    <script src="{% static 'js/contact.js' %}"></script>
+    <script src="{% static 'js/chatbot.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const popupOverlay = document.getElementById('login-popup-overlay');
+            const loginButton = document.getElementById('popup-login-button');
+            const closeButton = document.getElementById('popup-close-button');
+            const isAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
+
+            function showPopup() {
+                if (popupOverlay) {
+                    popupOverlay.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+
+            function hidePopup() {
+                if (popupOverlay) {
+                    popupOverlay.classList.remove('active');
+                    document.body.style.overflow = '';
+                    window.location.href = "{% url 'index_page' %}";
+                }
+            }
+
+            if (loginButton) {
+                loginButton.addEventListener('click', function() {
+                    window.location.href = "{% url 'auth_page' %}";
+                });
+            }
+
+            if (closeButton) {
+                closeButton.addEventListener('click', hidePopup);
+            }
+
+            if (popupOverlay) {
+                popupOverlay.addEventListener('click', function(event) {
+                    if (event.target === popupOverlay) {
+                        hidePopup();
+                    }
+                });
+            }
+
+            // Only show popup if not authenticated
+            if (!isAuthenticated) {
+                showPopup();
+            }
+        });
+    </script>
+
+</body>
+</html>

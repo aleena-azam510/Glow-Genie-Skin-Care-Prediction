@@ -1,0 +1,13 @@
+{% extends 'base.html' %} 
+
+{% block content %}
+<div class="container custom-social-login">
+  <h1>Sign In Via Google</h1>
+  <p>You are about to sign in using your Google account.</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="google-button">Continue with Google</button>
+  </form>
+  <a href="{% url 'account_login' %}">Go back to login page</a>
+</div>
+{% endblock %}

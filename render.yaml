@@ -1,0 +1,38 @@
+# render.yaml
+databases:
+  - name: skindb-pro-db # A name for Render's internal tracking of your database
+    plan: pro # Use the professional tier
+    databaseName: skindb # The actual database name Django will connect to
+    user: alina # Your database user
+    # Render will auto-generate a strong password for you when using blueprints
+
+services:
+  - type: web
+    name: glow-genie-organic-skin-care # A clear name for your web service on Render
+    runtime: python
+    # Location of your build command (relative to your repo root)
+    # It's important to run collectstatic and migrate BEFORE starting the server
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate"
+    # Command to start your web server using Gunicorn
+    startCommand: "gunicorn skinpredictor.wsgi:application --bind 0.0.0.0:$PORT"
+    envVars:
+      # Automatically inject the DATABASE_URL from the created database
+      - key: DATABASE_URL
+        fromDatabase:
+          name: skindb-pro-db # Must match the database name defined above
+          property: connectionString
+      # Generate a secure Django SECRET_KEY automatically
+      - key: SECRET_KEY
+        generateValue: true
+      # Set Django's DEBUG to False for production
+      - key: DJANGO_DEBUG
+        value: "False"
+      # ALLOWED_HOSTS will be the Render URL after deployment.
+      - key: DJANGO_ALLOWED_HOSTS
+        value: "${RENDER_EXTERNAL_HOSTNAME}" # Render automatically injects its hostname
+      # Your PKL model URL from GitHub's raw content server (Git LFS)
+      - key: PKL_FILE_URL
+        value: "https://raw.githubusercontent.com/aleena-azam510/Skin-Issues-FYP-Backend-2025/main/fasterrcnn_skin_issues_model_final(3).pkl" # <--- PASTE THE RAW GITHUB URL HERE!
+    plan: pro # Use the professional web service tier
+    # Add a health check to help Render determine if your app is alive
+    healthCheckPath: /
