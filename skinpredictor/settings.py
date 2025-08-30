@@ -36,11 +36,21 @@ def set_deterministic_environment(seed):
 set_deterministic_environment(SEED)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# --- IMPORTANT: Get SECRET_KEY from environment variable ---
+# Use a production-safe method for SECRET_KEY
 SECRET_KEY = os.environ.get('SECRET_KEY', 'your_insecure_default_key_for_dev')
 
-DEBUG = True
-ALLOWED_HOSTS = ['glow-genie-organic-skin-care.onrender.com', 'localhost', '127.0.0.1']
-CSRF_TRUSTED_ORIGINS = ['https://glow-genie-organic-skin-care.onrender.com']
+# --- ENVIRONMENT SETTINGS ---
+# Set DEBUG to False for production
+DEBUG = False
+
+# Add your PythonAnywhere domain to ALLOWED_HOSTS
+# Replace 'your-username' with your actual PythonAnywhere username
+ALLOWED_HOSTS = ['glowgenieskincare.pythonanywhere.com', 'localhost', '127.0.0.1']
+
+# Update CSRF_TRUSTED_ORIGINS to include your PythonAnywhere domain
+CSRF_TRUSTED_ORIGINS = ['https://glowgenieskincare.pythonanywhere.com']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -67,7 +77,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # WhiteNoise is recommended for serving static files on production
+    # 'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -137,12 +148,20 @@ LOGGING = {
 
 WSGI_APPLICATION = 'skinpredictor.wsgi.application'
 
+# --- DATABASE CONFIGURATION FOR PYTHONANYWHERE POSTGRESQL ---
+# This configuration is for connecting to your PostgreSQL database on PythonAnywhere.
+# You will need to replace the placeholders with your actual database details.
+# Get these from the "Databases" tab on your PythonAnywhere dashboard.
+# You need to create a database and a user first.
 DATABASES = {
-    'default': dj_database_url.config(
-        default='postgres://user:password@host:port/database',
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'glowgenieskincare$default', # This is the database name
+        'USER': 'glowgenieskincare', # This is your username
+        'PASSWORD': 'glowgeniefyp2025@@', # Use the password you set in the screenshot
+        'HOST': 'glowgenieskincare-4778.postgres.pythonanywhere-services.com',
+        'PORT': '14778',
+    }
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -161,26 +180,39 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-CONTACT_EMAIL = 'your_recipient_email@example.com'
+CONTACT_EMAIL = 'skinissuesfyp@gmail.com'
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# --- STATIC FILES CONFIGURATION FOR PRODUCTION ---
+# PythonAnywhere serves static files directly from a designated directory.
+# `STATIC_ROOT` must be set to the absolute path where all static files will be collected.
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'skinpredictor', 'static'),
 ]
 
+# --- MEDIA FILES CONFIGURATION FOR PRODUCTION ---
+# PythonAnywhere also serves media files directly.
+# `MEDIA_ROOT` should be the absolute path where user-uploaded files are stored.
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Ensure `DEBUG` is set to `False` in production
+# The following settings are security best practices for a production environment.
 if not DEBUG:
     X_FRAME_OPTIONS = 'DENY'
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_BROWSER_XSS_FILTER = True
+    # The `whitenoise` middleware is useful if you are not using PythonAnywhere's static file mapping
+    # but since PythonAnywhere has a built-in static file server, it is not strictly necessary.
+    # To use `whitenoise`, uncomment the middleware line above and install the package.
+    # STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 
 SITE_ID = 1
 
@@ -216,6 +248,7 @@ SOCIALACCOUNT_PROVIDERS = {
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
     "https://glow-genie-organic-skin-care.onrender.com",
+    "https://glowgenieskincare.pythonanywhere.com"  # Added PythonAnywhere domain
 ]
 
 LOGIN_URL = 'auth_page'
