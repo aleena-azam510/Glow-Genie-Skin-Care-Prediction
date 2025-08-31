@@ -221,7 +221,7 @@ if DJANGO_ENV == 'production':
 
 else: # Development Environment
     DEBUG = True
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1','56.228.7.54']
     CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
     
     # Development database for PostgreSQL.
