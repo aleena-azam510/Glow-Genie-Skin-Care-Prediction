@@ -151,7 +151,7 @@ if DJANGO_ENV == 'production':
     DEBUG = False
     
     # Get deployment-specific hosts from environment variables or hardcoded values
-    ALLOWED_HOSTS = ['glowgenieskincare.pythonanywhere.com', 'glow-genie-organic-skin-care.onrender.com']
+    ALLOWED_HOSTS = ['glowgenieskincare.pythonanywhere.com', 'glow-genie-organic-skin-care.onrender.com', 'YOUR_EC2_PUBLIC_IP'] # ADD YOUR EC2 PUBLIC IP HERE
     FLY_APP_NAME = os.environ.get('FLY_APP_NAME')
     if FLY_APP_NAME:
         ALLOWED_HOSTS.append(f"{FLY_APP_NAME}.fly.dev")
@@ -162,15 +162,15 @@ if DJANGO_ENV == 'production':
     ]
     if FLY_APP_NAME:
         CSRF_TRUSTED_ORIGINS.append(f"https://{FLY_APP_NAME}.fly.dev")
-        
+    
     # Database configuration for production
     # Reads from DATABASE_URL environment variable for robust deployment
-    # DATABASES = {
-    #     'default': dj_database_url.config(
-    #         default=os.environ.get('DATABASE_URL'),
-    #         conn_max_age=600
-    #     )
-    # }
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600
+        )
+    }
     
     # AWS S3 for Static and Media Files
     AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -184,6 +184,9 @@ if DJANGO_ENV == 'production':
 
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
     STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    
+    # A local directory is needed for collectstatic to gather files before uploading to S3.
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
     
     if AWS_STORAGE_BUCKET_NAME:
         AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
