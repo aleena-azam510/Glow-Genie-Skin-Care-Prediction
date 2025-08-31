@@ -229,11 +229,11 @@ else: # Development Environment
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME', 'skindb'),
-            'USER': os.environ.get('DB_USER', 'alina'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', 'MyDjangoPass!123'),
-            'HOST': os.environ.get('DB_HOST', 'localhost'),
-            'PORT': os.environ.get('DB_PORT', '5432'),
+            'NAME': 'glowgeniedatabase',
+            'USER': 'mysuperuser',
+            'PASSWORD': 'glowgeniefyp2025',
+            'HOST': 'glowgeniedatabase.cvmikalc8kad.eu-north-1.rds.amazonaws.com', # Use the RDS endpoint
+            'PORT': '5432',
         }
     }
     
