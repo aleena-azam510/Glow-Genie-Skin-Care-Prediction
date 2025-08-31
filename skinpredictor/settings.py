@@ -151,14 +151,17 @@ if DJANGO_ENV == 'production':
     DEBUG = False
     
     # Get deployment-specific hosts from environment variables or hardcoded values
-    ALLOWED_HOSTS = ['56.228.7.54'] # ADD YOUR EC2 PUBLIC IP HERE
+    ALLOWED_HOSTS = ['56.228.7.54',] # ADD YOUR EC2 PUBLIC IP HERE
+    ALLOWED_HOSTS = ['*']
+
     FLY_APP_NAME = os.environ.get('FLY_APP_NAME')
     if FLY_APP_NAME:
         ALLOWED_HOSTS.append(f"{FLY_APP_NAME}.fly.dev")
     
     CSRF_TRUSTED_ORIGINS = [
         "https://glowgenieskincare.pythonanywhere.com",
-        "https://glow-genie-organic-skin-care.onrender.com"
+        "https://glow-genie-organic-skin-care.onrender.com",
+        "http://56.228.7.54" # Add your EC2 public IP here
     ]
     if FLY_APP_NAME:
         CSRF_TRUSTED_ORIGINS.append(f"https://{FLY_APP_NAME}.fly.dev")
