@@ -207,4 +207,6 @@ LOGGING = {
     },
 }
 
-SAGEMAKER_ENDPOINT_NAME = "pytorch-inference-2025-08-31-15-00-44-822"
+# --- AWS & Sagemaker Configuration ---
+AWS_REGION = os.environ.get('AWS_REGION', 'eu-north-1')
+SAGEMAKER_ENDPOINT_NAME = os.environ.get('SAGEMAKER_ENDPOINT_NAME', "pytorch-inference-2025-08-31-15-00-44-822")
