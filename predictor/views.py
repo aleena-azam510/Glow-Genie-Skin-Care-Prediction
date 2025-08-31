@@ -1,6 +1,5 @@
-import base64
-import torch
-from torchvision import transforms
+import cv2
+import logging
 from PIL import Image, ImageDraw, ImageFont
 from django.http import JsonResponse, HttpResponse
 import logging
@@ -11,126 +10,39 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 import io
 import torchvision
-from torchvision.models.detection import FasterRCNN
-from torchvision.models.detection.rpn import AnchorGenerator
-from torchvision.models import resnet18, ResNet18_Weights
-import torch.nn as nn
-import cv2
+
 from .models import SkinCondition,SkinCondition_page
 from utils.aliases import CONDITION_ALIASES
 from django.shortcuts import render, get_object_or_404
 import hashlib # <--- ADD THIS IMPORT
-
-# # --- START: Deterministic Setup ---
-# import numpy as np
-# import random
-
-# SEED = 42 # You can choose any integer for the seed
-
-# def set_deterministic_environment(seed):
-#     torch.manual_seed(seed)
-#     torch.cuda.manual_seed(seed)
-#     torch.cuda.manual_seed_all(seed) # if you use multiple GPUs
-#     np.random.seed(seed)
-#     random.seed(seed)
-#     # Ensure all operations are deterministic
-#     torch.backends.cudnn.deterministic = True
-#     torch.backends.cudnn.benchmark = False # Disabling this can sometimes reduce performance but ensures determinism
-#     # Optional: If you use a specific hashing algorithm (e.g., for model initialization)
-#     # os.environ['PYTHONHASHSEED'] = str(seed) 
-
-# set_deterministic_environment(SEED)
-# # --- END: Deterministic Setup ---
-
-
+# The Django view for handling requests
+import boto3
+import json
+from django.conf import settings
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from .models import SkinCondition
 logger = logging.getLogger(__name__)
+# Initialize the SageMaker client (can be done globally)
+SAGEMAKER_ENDPOINT_NAME = settings.SAGEMAKER_ENDPOINT_NAME
+REGION_NAME = settings.AWS_REGION
+runtime_client = boto3.client('sagemaker-runtime', region_name=REGION_NAME)
 
-model = None
-TARGET_SIZE = (700, 900)
-
-CLASS_MAP = {
-    'freckles': 1,
-    'eye bags': 2,
-    'dark circles': 3,
-    'acne': 4,
-    'rosacea': 5,      # Corrected from 'rashes'
-    'pigmentation': 6,
-    'wrinkles': 7,
-    'skin cancer': 8,
-    'Black-heads': 9,  # Corrected from 'black-heads'
-    'sun spots': 10,   # Corrected from 'dark spots'
-}
-
-# Your get_model function should be exactly as follows:
-def get_model(num_classes):
-    resnet = resnet18(weights=ResNet18_Weights.DEFAULT)
-    backbone = nn.Sequential(
-        resnet.conv1,
-        resnet.bn1,
-        resnet.relu,
-        resnet.maxpool,
-        resnet.layer1,
-        resnet.layer2,
-        nn.Dropout(0.3),
-        resnet.layer3,
-        nn.Dropout(0.3),
-        resnet.layer4,
-        nn.Dropout(0.3),
-    )
-    backbone.out_channels = 512
-
-    for param in backbone.parameters():
-        param.requires_grad = False
-    for name, module in resnet.named_children():
-        if name in ['layer2', 'layer3', 'layer4']:
-            for param in module.parameters():
-                param.requires_grad = True
-
-    anchor_generator = AnchorGenerator(sizes=((16, 32, 64, 128, 256),), aspect_ratios=((0.5, 1.0, 2.0),))
-    roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=['0'], output_size=7, sampling_ratio=2)
-
-    model = FasterRCNN(backbone, num_classes=num_classes, rpn_anchor_generator=anchor_generator, box_roi_pool=roi_pooler)
-    return model
-
-
-def load_model():
-    """Loads the PyTorch model. Handles potential errors."""
-    global model
-    try:
-        logger.info("Attempting to load model...")
-        # Path to your model file (assuming it's the full model object)
-        model_path = r'C:\skinpredictor\model_V2_full_cpu_compatible.pth' # or whatever your full model file is named
-
-        # *** IMPORTANT CHANGE: Add weights_only=False ***
-        model = torch.load(
-            model_path,
-            map_location=torch.device('cpu'),
-            weights_only=False # <--- ADD THIS ARGUMENT to load the full model object
-        )
-        
-        model.eval() # Set the model to evaluation mode
-        logger.info("Model loaded successfully.")
-    except Exception as e:
-        logger.error(f"Error loading model: {e}")
-        traceback.print_exc()
-        model = None
-
-load_model()
-
-
-label_map = {
+# Your CLASS_MAP should be kept in Django, as it's part of the application logic
+LABEL_MAP = {
     1: 'freckles',
     2: 'eye bags',
     3: 'dark circles',
     4: 'acne',
-    5: 'rosacea',      # Corrected from 'rashes'
+    5: 'rosacea',
     6: 'pigmentation',
     7: 'wrinkles',
     8: 'skin cancer',
-    9: 'Black-heads',  # Corrected from 'black-heads'
-    10: 'sun spots',   # Corrected from 'dark spots'
+    9: 'black-heads',
+    10: 'sun spots',
 }
-
 
 @csrf_exempt
 @require_POST
@@ -140,116 +52,61 @@ def predict_view(request):
         return JsonResponse({'error': 'No file provided'}, status=400)
 
     image_file = request.FILES['file']
+    image_bytes = image_file.read()
     
-    # --- NEW: Log hash of the received image bytes ---
-    image_file_content = image_file.read() # Read content once
-    image_hash = hashlib.md5(image_file_content).hexdigest()
-    logger.info(f"Received image hash: {image_hash}")
-    image_file.seek(0) # Reset file pointer after reading, for PIL.Image.open
-    # --- END NEW ---
-
-    img_original = Image.open(image_file).convert("RGB") # Keep original for consistent processing
-    
-    original_width, original_height = img_original.size
-    target_width, target_height = TARGET_SIZE
-
-    transform = transforms.Compose([
-        transforms.ToTensor()
-    ])
-    img_tensor = transform(img_original).unsqueeze(0)  # [1, C, H, W]
-
-    # --- Ensemble Prediction Setup ---
-    N_RUNS = 3 # Number of times to run inference for aggregation
-    
-    aggregated_detected_issues = set()
-    aggregated_confidence_scores = {}
-    
-    img_for_drawing = img_original.copy()
-    img_for_drawing = img_for_drawing.resize(TARGET_SIZE, Image.LANCZOS)
-    draw = ImageDraw.Draw(img_for_drawing)
-
     try:
-        font = ImageFont.truetype("arial.ttf", 30)
-    except:
-        font = ImageFont.load_default()
-
-    # --- Ensemble Loop ---
-    for run_idx in range(N_RUNS):
-        with torch.no_grad():
-            predictions = model(img_tensor)[0]
-
-        # --- DIAGNOSTIC LOGGING (still useful to see individual run outputs) ---
-        logger.info(f"Run {run_idx+1} Raw scores from model: {predictions['scores'].tolist()}")
-        logger.info(f"Run {run_idx+1} Raw labels from model: {predictions['labels'].tolist()}")
-        # --- END DIAGNOSTIC LOGGING ---
-
-        boxes = predictions['boxes']
-        labels = predictions['labels']
-        scores = predictions['scores']
-
-        scale_x = target_width / original_width
-        scale_y = target_height / original_height
+        # 1. Invoke the SageMaker endpoint with the image bytes
+        response = runtime_client.invoke_endpoint(
+            EndpointName=SAGEMAKER_ENDPOINT_NAME,
+            ContentType='image/jpeg',  # Send the raw image bytes
+            Body=image_bytes
+        )
         
-        for box, label, score in zip(boxes, labels, scores):
-            if score > 0.3 and label.item() != 0 and label.item() in label_map:
-                box = box.tolist()
-                scaled_box = [
-                    box[0] * scale_x,
-                    box[1] * scale_y,
-                    box[2] * scale_x,
-                    box[3] * scale_y
-                ]
-                label_name = label_map.get(label.item()).lower()
-                issue_key = label_name
-                
-                aggregated_detected_issues.add(issue_key)
-                aggregated_confidence_scores[issue_key] = max(aggregated_confidence_scores.get(issue_key, 0), round(score.item() * 100, 2))
-                
-                confidence_val = round(score.item() * 100, 2)
-                draw.rectangle(scaled_box, outline="red", width=2)
-                text = f"{label_name.capitalize()} ({confidence_val}%)"
-                text_position = (scaled_box[0], scaled_box[1] - 15 if scaled_box[1] - 15 > 0 else scaled_box[1])
-                draw.text(text_position, text, fill="white", font=font)
-    # --- End Ensemble Loop ---
+        # 2. Decode and parse the JSON response from SageMaker
+        sagemaker_result = json.loads(response['Body'].read().decode('utf-8'))
+        predictions = sagemaker_result.get('predictions', [])
+        
+        # 3. Process the predictions and fetch remedies from your Django database
+        final_results = []
+        for pred in predictions:
+            label_id = pred.get('label_id')
+            
+            # Use the label_id to get the condition name from your map
+            condition_name = LABEL_MAP.get(label_id, "unknown").lower()
+            
+            # Fetch the remedy data from your Django ORM
+            try:
+                condition = SkinCondition.objects.get(name__iexact=condition_name)
+                remedies_data = {
+                    'causes': [c.strip() for c in condition.causes.split('\n') if c.strip()],
+                    'symptoms': [s.strip() for s in condition.symptoms.split('\n') if s.strip()],
+                    'remedies': [
+                        {
+                            'title': r.title,
+                            'directions': r.formatted_directions(),
+                            'amount': r.amount,
+                            'image_url': r.image.url if r.image else None
+                        } for r in condition.remedy_set.all()
+                    ]
+                }
+            except SkinCondition.DoesNotExist:
+                remedies_data = {
+                    'causes': [],
+                    'symptoms': [],
+                    'remedies': []
+                }
 
+            final_results.append({
+                "confidence": pred.get('confidence'),
+                "disease_name": condition_name,
+                "remedies_data": remedies_data
+            })
 
-    # Convert the annotated image to base64 for JSON response
-    img_io = io.BytesIO()
-    img_for_drawing.save(img_io, format='JPEG') # Save the image with accumulated drawings
-    img_base64 = base64.b64encode(img_io.getvalue()).decode('utf-8')
+        return JsonResponse({'status': 'success', 'detected_issues': final_results})
 
-    # Prepare remedies data for all aggregated detected issues
-    def normalize_condition(predicted_label):
-        return CONDITION_ALIASES.get(predicted_label.lower(), predicted_label.lower())
-
-    remedies_data = {}
-    for issue in aggregated_detected_issues: # Use aggregated issues for remedies
-        normalized_issue = normalize_condition(issue)
-        try:
-            condition = SkinCondition.objects.get(name__iexact=normalized_issue)
-            remedies_data[issue] = {
-                'causes': [c.strip() for c in condition.causes.split('\n') if c.strip()],
-                'symptoms': [s.strip() for s in condition.symptoms.split('\n') if s.strip()],
-                'remedies': [
-                    {
-                        'title': r.title,
-                        'directions': r.formatted_directions(),
-                        'amount': r.amount,
-                        'image_url': r.image.url if r.image else None
-                    } for r in condition.remedy_set.all()
-                ]
-            }
-        except SkinCondition.DoesNotExist:
-            continue
-
-    return JsonResponse({
-        'status': 'success',
-        'annotated_image': img_base64,
-        'detected_issues': list(aggregated_detected_issues), # Return aggregated unique issues
-        'remedies_data': remedies_data,
-        'confidence_scores': aggregated_confidence_scores # Return aggregated max confidences
-    })
-
+    except Exception as e:
+        logger.error(f"Error invoking SageMaker endpoint: {e}")
+        return JsonResponse({'error': 'Prediction failed. Please try again later.'}, status=500)
 
 
 def capture(request):
