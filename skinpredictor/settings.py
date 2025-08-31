@@ -206,3 +206,5 @@ LOGGING = {
         },
     },
 }
+
+SAGEMAKER_ENDPOINT_NAME = "pytorch-inference-2025-08-31-15-00-44-822"
