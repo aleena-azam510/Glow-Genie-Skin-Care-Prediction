@@ -1,16 +1,15 @@
 
-
-
 import spacy
 import json
-import numpy as np
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST, require_GET
-from .chatbot_data import NORMALIZED_INPUTS,TAGS
+from django.views.decorators.http import require_POST
+from .chatbot_data import NORMALIZED_INPUTS, TAGS
 from .models import Question
 import string
-# from chatbot_data import TAGS
+
+# Load spacy model once.
+# 'en_core_web_md' is a medium-sized model with word vectors.
 nlp = spacy.load("en_core_web_md")
 
 # Keyword tagging
@@ -74,54 +73,54 @@ topic_buttons = {
 }
 
 
-from sentence_transformers import SentenceTransformer, util
-
-# Load models once
-nlp = spacy.load("en_core_web_md")
-sbert_model = SentenceTransformer('all-MiniLM-L6-v2')
-
-# In-memory cache (reloaded on server restart)
+# In-memory cache
 cached_questions = []
-cached_embeddings = []
+cached_spacy_docs = []
 
 def normalize(text):
     return text.lower().strip().translate(str.maketrans('', '', string.punctuation))
 
 def preload_questions():
-    global cached_questions, cached_embeddings
+    """
+    Loads questions from the database and caches them along with their
+    spaCy Doc objects for efficient similarity lookups.
+    """
+    global cached_questions, cached_spacy_docs
     cached_questions = list(Question.objects.select_related("answer").all())
     question_texts = [q.text for q in cached_questions]
-    cached_embeddings = sbert_model.encode(question_texts, convert_to_tensor=True)
+    cached_spacy_docs = [nlp(text) for text in question_texts]
 
-# Run once at startup (Django trick: lazy loading)
+# Run once at startup
 def ensure_loaded():
     if not cached_questions:
         preload_questions()
 
-from sentence_transformers import SentenceTransformer, util
+def get_best_match_spacy(user_input, questions, spacy_docs, threshold=0.7):
+    """
+    Finds the best matching question using spaCy's semantic similarity.
+    """
+    user_doc = nlp(user_input)
+    best_match = None
+    best_score = 0.0
 
-model = SentenceTransformer('all-MiniLM-L6-v2')  # or your preferred model
-
-def get_best_match(user_input, all_questions, threshold=0.6):
-    valid_questions = [q for q in all_questions if q.text and q.text.strip()]
-    if not valid_questions:
+    # Ensure the user input has a vector to compare against
+    if not user_doc.has_vector:
         return None
 
-    question_texts = [q.text for q in valid_questions]
-    query_embedding = model.encode(user_input, convert_to_tensor=True)
-    cached_embeddings = model.encode(question_texts, convert_to_tensor=True)
-
-    if len(cached_embeddings) == 0:
-        return None
-
-    cosine_scores = util.cos_sim(query_embedding, cached_embeddings)[0]
-    best_idx = int(cosine_scores.argmax())
-    best_score = float(cosine_scores[best_idx])
-
-    return valid_questions[best_idx] if best_score >= threshold else None
-
+    for i, question_doc in enumerate(spacy_docs):
+        # Ensure the question has a vector and isn't just whitespace
+        if question_doc.has_vector and question_doc.text.strip():
+            score = user_doc.similarity(question_doc)
+            if score > best_score:
+                best_score = score
+                best_match = questions[i]
+    
+    return best_match if best_score >= threshold else None
 
 def detect_topic(user_input):
+    """
+    Detects a topic based on keywords in the user input.
+    """
     text = user_input.lower()
     for topic, keywords in TAGS.items():
         if any(kw in text for kw in keywords):
@@ -129,6 +128,9 @@ def detect_topic(user_input):
     return None
 
 def log_unmatched_query(user_input):
+    """
+    Logs unmatched queries to a file for analysis.
+    """
     try:
         with open("unmatched_queries.log", "a") as f:
             f.write(user_input + "\n")
@@ -1944,63 +1946,57 @@ def score_tag(user_input):
 @csrf_exempt
 @require_POST
 def chatbot(request):
-    ensure_loaded()  # ensure embeddings are ready
+    ensure_loaded()  # ensure data is cached
 
     try:
         body = json.loads(request.body)
         user_input = body.get("message", "").strip()
-    except:
+    except (json.JSONDecodeError, AttributeError):
         return JsonResponse({"response": "Invalid input."}, status=400)
 
     if not user_input:
         return JsonResponse({"response": "Please enter a message."})
 
     user_input_norm = normalize(user_input)
-    normalized_input = NORMALIZED_INPUTS.get(user_input_norm)
 
     # 1. Exact match from DB
     best_question = next((q for q in cached_questions if normalize(q.text) == user_input_norm), None)
 
     # 2. From normalized mapping
-    if not best_question and normalized_input:
-        best_question = next((q for q in cached_questions if normalize(q.text) == normalize(normalized_input)), None)
+    if not best_question:
+        normalized_input = NORMALIZED_INPUTS.get(user_input_norm)
+        if normalized_input:
+            best_question = next((q for q in cached_questions if normalize(q.text) == normalize(normalized_input)), None)
 
     # 3. Keyword/topic-based
     if not best_question:
         topic = detect_topic(user_input)
         if topic:
+            # You need a question in your DB that maps to the topic to get an answer.
+            # Example: A question with text "Topic: {topic_name}" could hold the answer.
             best_question = next((q for q in cached_questions if normalize(q.text) == topic), None)
 
-    # 4. Scored tag match
+    # 4. Semantic match using spaCy
+    # Note: `score_tag` and `topic` logic seem redundant/unclear in the original code.
+    # The `detect_topic` handles keyword-based intent.
     if not best_question:
-        scored_tag = score_tag(user_input)
-        if scored_tag:
-            best_question = next((q for q in cached_questions if normalize(q.text) == scored_tag), None)
+        best_question = get_best_match_spacy(user_input, cached_questions, cached_spacy_docs)
 
-    # 5. Semantic match using SBERT
-    if not best_question:
-        best_question = get_best_match(user_input, cached_questions)
-
-
-    # 6. Return found answer
+    # 5. Return found answer
     if best_question and best_question.answer:
-        return JsonResponse({
-            "response": best_question.answer.content,
-    
-        })
+        return JsonResponse({"response": best_question.answer.content})
 
-    # 7. Fallback
+    # 6. Fallback
     log_unmatched_query(user_input)
     topic = detect_topic(user_input)
-    fallback_buttons = topic_buttons.get(topic, topic_buttons["default"])
-
+    fallback_buttons = topic_buttons.get(topic, topic_buttons.get("default", []))
+    
     return JsonResponse({
         "response": [
             {"type": "paragraph", "text": "Sorry, I didn't find an answer for that."},
             {"type": "button_group", "buttons": fallback_buttons}
         ]
     })
-
 # @require_GET
 # def initial_greeting(request):
 #     try:
