@@ -1,0 +1,11 @@
+# Ignore large model files
+model/model.tar.gz
+
+# Ignore Python-specific files
+__pycache__/
+*.pyc
+.env
+venv/
+
+# Ignore database file
+db.sqlite3
