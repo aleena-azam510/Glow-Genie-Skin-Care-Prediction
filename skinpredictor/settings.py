@@ -232,7 +232,7 @@ else: # Development Environment
             'NAME': 'glowgeniedatabase',
             'USER': 'mysuperuser',
             'PASSWORD': 'glowgeniefyp2025',
-            'HOST': 'glowgeniedatabase.cvmikalc8kad.eu-north-1.rds.amazonaws.com', # Use the RDS endpoint
+            'HOST': 'glowgeniedatabase.c3emkcak8tad.eu-north-1.rds.amazonaws.com', # Use the RDS endpoint
             'PORT': '5432',
         }
     }
