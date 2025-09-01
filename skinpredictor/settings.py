@@ -20,7 +20,6 @@ import sys
 # Get the environment setting from an environment variable, defaulting to 'development'
 DJANGO_ENV = os.environ.get('DJANGO_ENV', 'development')
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- CORE SETTINGS ---
@@ -146,13 +145,36 @@ SOCIALACCOUNT_PROVIDERS = {
 LOGIN_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_REDIRECT_URL = 'auth_page'
 
+# --- AWS & Sagemaker Configuration (moved from within if/else) ---
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_SIGNATURE_VERSION = 's3v4'
+AWS_S3_REGION_NAME = os.environ.get('AWS_REGION')
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = None
+AWS_S3_VERIFY = True
+
+if AWS_STORAGE_BUCKET_NAME:
+    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+else:
+    AWS_S3_CUSTOM_DOMAIN = 'your-default-bucket.s3.amazonaws.com'
+    
+STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 # --- ENVIRONMENT-SPECIFIC SETTINGS ---
 if DJANGO_ENV == 'production':
     DEBUG = False
     
     # Get deployment-specific hosts from environment variables or hardcoded values
-    ALLOWED_HOSTS = ['56.228.7.54',] # ADD YOUR EC2 PUBLIC IP HERE
-    ALLOWED_HOSTS = ['*']
+    ALLOWED_HOSTS = ['56.228.7.54'] # Ensure only your EC2 public IP is here
 
     FLY_APP_NAME = os.environ.get('FLY_APP_NAME')
     if FLY_APP_NAME:
@@ -167,7 +189,6 @@ if DJANGO_ENV == 'production':
         CSRF_TRUSTED_ORIGINS.append(f"https://{FLY_APP_NAME}.fly.dev")
     
     # Database configuration for production
-    # Reads from DATABASE_URL environment variable for robust deployment
     DATABASES = {
         'default': dj_database_url.config(
             default=os.environ.get('DATABASE_URL'),
@@ -175,31 +196,6 @@ if DJANGO_ENV == 'production':
         )
     }
     
-    # AWS S3 for Static and Media Files
-    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
-    AWS_S3_SIGNATURE_VERSION = 's3v4'
-    AWS_S3_REGION_NAME = os.environ.get('AWS_REGION')
-    AWS_S3_FILE_OVERWRITE = False
-    AWS_DEFAULT_ACL = None
-    AWS_S3_VERIFY = True
-
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    
-    # A local directory is needed for collectstatic to gather files before uploading to S3.
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-    
-    if AWS_STORAGE_BUCKET_NAME:
-        AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-    else:
-        AWS_S3_CUSTOM_DOMAIN = 'your-default-bucket.s3.amazonaws.com'
-    
-    # URLs for S3
-    STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
-    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
-
     # Production security
     X_FRAME_OPTIONS = 'DENY'
     SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -228,7 +224,6 @@ else: # Development Environment
     CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
     
     # Development database for PostgreSQL.
-    # It reads credentials from your .env file
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -240,12 +235,7 @@ else: # Development Environment
         }
     }
     
-    # Local file system storage for static and media files
-    STATIC_URL = '/static/'
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-    
+    # Whitenoise is not needed in dev with local files.
     MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
     INSTALLED_APPS.insert(4, 'whitenoise.runserver_nostatic')
 
