@@ -174,7 +174,7 @@ if DJANGO_ENV == 'production':
     DEBUG = False
     
     # Get deployment-specific hosts from environment variables or hardcoded values
-    ALLOWED_HOSTS = ['56.228.7.54'] # Ensure only your EC2 public IP is here
+    ALLOWED_HOSTS = ['16.16.25.152'] # Ensure only your EC2 public IP is here
 
     FLY_APP_NAME = os.environ.get('FLY_APP_NAME')
     if FLY_APP_NAME:
@@ -183,7 +183,7 @@ if DJANGO_ENV == 'production':
     CSRF_TRUSTED_ORIGINS = [
         "https://glowgenieskincare.pythonanywhere.com",
         "https://glow-genie-organic-skin-care.onrender.com",
-        "http://56.228.7.54" # Add your EC2 public IP here
+        "https://16.16.25.152/" # Add your EC2 public IP here
     ]
     if FLY_APP_NAME:
         CSRF_TRUSTED_ORIGINS.append(f"https://{FLY_APP_NAME}.fly.dev")
@@ -220,7 +220,7 @@ if DJANGO_ENV == 'production':
 
 else: # Development Environment
     DEBUG = True
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1','56.228.7.54']
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1','16.16.25.152','*']
     CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
     
     # Development database for PostgreSQL.
